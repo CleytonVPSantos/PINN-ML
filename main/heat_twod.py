@@ -25,11 +25,11 @@ class PINN(nn.Module):
         x = self.tanh(self.layer5(x))
         x = self.output_layer(x)
         return x
-    
 
-def loss_function(model, alpha, x_init, y_init, t_init, u_init, x_boundary, 
+
+def loss_function(model, alpha, x_init, y_init, t_init, u_init, x_boundary,
                   y_boundary, t_boundary, u_boundary, x_collocation, y_collocation, t_collocation):
-    
+
     # Condições iniciais
     u_initial_pred = model(torch.cat((x_init, y_init, t_init), dim=1))
     mse_initial = nn.MSELoss()(u_initial_pred, u_init)
@@ -69,7 +69,7 @@ def train_model(device, alpha):
     input_size = 3
     hidden_size = 100
     output_size = 1
-    model = PINN(input_size, hidden_size, output_size).to(device)  # Move o modelo para a GPU
+    model = PINN(input_size, hidden_size, output_size).to(device)  
     alpha = 0.15
 
     # Quantidade de exemplos de treinamento
@@ -87,20 +87,20 @@ def train_model(device, alpha):
     t_init = torch.zeros_like(x_init).to(device)
     u_init = (torch.sin(torch.pi * x_init) * torch.sin(torch.pi * y_init)).to(device)
 
-    x_boundary = torch.cat([torch.zeros(n_s_boundary), 
+    x_boundary = torch.cat([torch.zeros(n_s_boundary),
                             torch.linspace(0, 1, n_s_boundary),
                             torch.linspace(0, 1, n_s_boundary),
                             torch.ones(n_s_boundary)]).to(device)
 
-    y_boundary = torch.cat([torch.linspace(0, 1, n_s_boundary), 
+    y_boundary = torch.cat([torch.linspace(0, 1, n_s_boundary),
                             torch.zeros(n_s_boundary),
                             torch.ones(n_s_boundary),
                             torch.linspace(0, 1, n_s_boundary)]).to(device)
 
     t = torch.linspace(0, 1, n_t_boundary).to(device)
 
-    x_boundary, t_boundary = torch.meshgrid(x_boundary, t, indexing='ij')  
-    y_boundary, t_boundary = torch.meshgrid(y_boundary, t, indexing='ij')  
+    x_boundary, t_boundary = torch.meshgrid(x_boundary, t, indexing='ij')
+    y_boundary, t_boundary = torch.meshgrid(y_boundary, t, indexing='ij')
     x_boundary = x_boundary.reshape(-1, 1).to(device)
     y_boundary = y_boundary.reshape(-1, 1).to(device)
     t_boundary = t_boundary.reshape(-1, 1).to(device)
@@ -121,12 +121,12 @@ def train_model(device, alpha):
 
     # Função de fechamento necessária para L-BFGS
     def closure():
-        optimizer.zero_grad()  # Zera os gradientes dos parâmetros
-        loss = loss_function(model, alpha, 
-                            x_init, y_init, t_init, u_init, 
-                            x_boundary, y_boundary, t_boundary, u_boundary, 
+        optimizer.zero_grad() 
+        loss = loss_function(model, alpha,
+                            x_init, y_init, t_init, u_init,
+                            x_boundary, y_boundary, t_boundary, u_boundary,
                             x_collocation, y_collocation, t_collocation)
-        loss.backward()  # Backward pass para calcular gradientes
+        loss.backward()  
         return loss
 
     # Treinamento
@@ -136,8 +136,10 @@ def train_model(device, alpha):
         if epoch % 10 == 0:
             print(f"Epoch {epoch}, Loss: {loss.item()}")
 
+    return model, loss
 
-def visualize_result(device, model, loss): 
+
+def visualize_result(device, model, loss):
     # Visualização e plot
     model.eval()
     t_values = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
@@ -164,7 +166,7 @@ def visualize_result(device, model, loss):
         ax.set_ylabel('y')
         ax.set_zlabel(f'u(x, y, t={t_val})')
         ax.set_zlim(-0.2, 1.2)
-        ax.set_title(f'Solution at t={t_val}')
+        ax.set_title(f'Solução em t={t_val}')
 
     plt.tight_layout()
     plt.show()
@@ -182,5 +184,5 @@ def main():
 
     model, loss = train_model(device, alpha)
     visualize_result(device, model, loss)
-    
+
 main()
