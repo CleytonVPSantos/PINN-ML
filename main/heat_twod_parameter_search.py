@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
-
+import time
 
 # Arquitetura da rede neural: 3 camadas hidden layers com ativação tanh
 class PINN_3(nn.Module):
@@ -104,7 +104,7 @@ def loss_function(model, alpha, x_init, y_init, t_init, u_init, x_boundary,
     return loss
 
 
-def train_model(device, alpha, hidden_size, n_hidden_layers):
+def train_model(device, alpha, hidden_size, n_hidden_layers, n_initial):
 
     input_size = 3
     output_size = 1
@@ -126,7 +126,7 @@ def train_model(device, alpha, hidden_size, n_hidden_layers):
     # Quantidade de exemplos de treinamento
     n_s_boundary = 20
     n_t_boundary = 20
-    n_initial = 100
+    # n_initial = 100
     n_collocation = 50
 
     # Dados para treinamento (condições iniciais, fronteira e pontos de collocation)
@@ -234,21 +234,20 @@ def main():
     alpha = 0.05
 
     # Constrói tabela que relaciona erros com parâmetros da NN
-    columns = ["n_hidden_layers", "hidden_size", "epochs", "loss"]
+    columns = ["n_hidden_layers", "hidden_size", "epochs", "data_size", "loss", "elapsed_time"]
     table = pd.DataFrame(data=None, index=None, columns=columns, dtype=None, copy=None)
 
     for n_hidden_layers in [3, 5, 6]:
+    # for n_hidden_layers in [5]:
         for hidden_size in [80, 100, 120]:
             for epochs in [50]:
-                    table.loc[len(table.index)] = [0, 0, 0, 0]
+                for data_size in [80, 100, 120]:
+                    start_time = time.time()
+                    _, loss = train_model(device, alpha, hidden_size, n_hidden_layers, data_size)
+                    end_time = time.time()
+                    elapsed_time = end_time - start_time
 
-    table.to_csv('table.csv', index=False)
-
-    for n_hidden_layers in [3, 5, 6]:
-        for hidden_size in [80, 100, 120]:
-            for epochs in [50]:
-                    _, loss = train_model(device, alpha, hidden_size, n_hidden_layers)
-                    table.loc[len(table.index)] = [n_hidden_layers, hidden_size, epochs, loss]
+                    table.loc[len(table.index)] = [n_hidden_layers, hidden_size, epochs, data_size, loss.item(), elapsed_time] 
                     table.to_csv('table.csv', index=False)
 
 
