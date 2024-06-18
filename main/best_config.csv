@@ -1,0 +1,2 @@
+,n_hidden_layers,hidden_size,epochs,data_size,loss,training_time,lossPtraining_time
+4,3.0,100.0,50.0,100.0,0.00347,159.80528,0.5545243216
