@@ -115,11 +115,11 @@ def train_model(device, alpha, hidden_size, n_hidden_layers, n_initial):
     if n_hidden_layers == 3:
         model = PINN_3(input_size, hidden_size, output_size).to(device)
     elif n_hidden_layers == 5:
-        model = PINN_5(input_size, hidden_size, output_size).to(device)  
+        model = PINN_5(input_size, hidden_size, output_size).to(device)
     elif n_hidden_layers == 6:
-        model = PINN_6(input_size, hidden_size, output_size).to(device)  
+        model = PINN_6(input_size, hidden_size, output_size).to(device)
     else:
-        Exception("Não sabe contar?") 
+        Exception("Não sabe contar?")
 
     alpha = 0.15
 
@@ -130,22 +130,14 @@ def train_model(device, alpha, hidden_size, n_hidden_layers, n_initial):
     n_collocation = 50
 
     # Subdivisão em treino, teste e validação
-    
-    # ===
-    data = torch.linspace(0, 1, 10).to(device)
-    data = data[torch.randperm(data.size(0))]
-
-    train_size = int(np.floor(0.7*data.size(0)))
-    test_size = int(np.floor(0.21*data.size(0)))
-    # ===
 
 
     # Dados para treinamento (condições iniciais, fronteira e pontos de collocation)
     x = torch.linspace(0, 1, n_initial).to(device)
 
     # Subdivisão em treino, teste e validação
-    train_size = int(np.floor(0.7*data.size(0)))
-    test_size = int(np.floor(0.21*data.size(0)))
+    train_size = int(np.floor(0.7*x.size(0)))
+    test_size = int(np.floor(0.21*x.size(0)))
 
     x = x[torch.randperm(x.size(0))]
     y = x[torch.randperm(x.size(0))]
@@ -153,11 +145,23 @@ def train_model(device, alpha, hidden_size, n_hidden_layers, n_initial):
     x_train, x_test, x_val = torch.tensor_split(x, (train_size, train_size + test_size))
     y_train, y_test, y_val = torch.tensor_split(y, (train_size, train_size + test_size))
 
-    x_init, y_init = torch.meshgrid(x_train, y_train, indexing='ij')
-    x_init = x_init.reshape(-1, 1).to(device)
-    y_init = y_init.reshape(-1, 1).to(device)
-    t_init = torch.zeros_like(x_init).to(device)
-    u_init = (torch.sin(torch.pi * x_init) * torch.sin(torch.pi * y_init)).to(device)
+    x_train, y_train = torch.meshgrid(x_train, y_train, indexing='ij')
+    x_val, y_val = torch.meshgrid(x_val, y_val, indexing='ij')
+
+    x_train = x_train.reshape(-1, 1).to(device)
+    y_train = y_train.reshape(-1, 1).to(device)
+
+    x_val = x_val.reshape(-1, 1).to(device)
+    y_val = y_val.reshape(-1, 1).to(device)
+
+
+    t_train = torch.zeros_like(x_train).to(device)
+    t_val = torch.zeros_like(x_val).to(device)
+    u_train = (torch.sin(torch.pi * x_train) * torch.sin(torch.pi * y_train)).to(device)
+    u_val = (torch.sin(torch.pi * x_val) * torch.sin(torch.pi * y_val)).to(device)
+
+
+
 
     x_boundary = torch.cat([torch.zeros(n_s_boundary),
                             torch.linspace(0, 1, n_s_boundary),
@@ -193,32 +197,30 @@ def train_model(device, alpha, hidden_size, n_hidden_layers, n_initial):
 
     # Função de fechamento necessária para L-BFGS
     def closure():
-        optimizer.zero_grad() 
+        optimizer.zero_grad()
         loss, _, _, _ = loss_function(model, alpha,
-                            x_init, y_init, t_init, u_init,
+                            x_train, y_train, t_train, u_train,
                             x_boundary, y_boundary, t_boundary, u_boundary,
                             x_collocation, y_collocation, t_collocation)
-        loss.backward()  
+        loss.backward()
         return loss
 
     # Treinamento
     model.train()
     for epoch in range(50):
         train_loss = optimizer.step(closure)
-        if epoch % 10 == 0:
+        if (epoch+1) % 10 == 0:
             print(f"Epoch {epoch}, Loss: {train_loss.item()}")
-    
-    # avaliando erros no conjunto de validação
+
+    # avaliando erros no de validação
     model.eval()
 
-    with torch.no_grad():
-    
-        loss, mse_initial, mse_boundary, mse_pde = loss_function(model, alpha,
-                        x_val, y_val, t_init, u_init,
-                        x_boundary, y_boundary, t_boundary, u_boundary,
-                        x_collocation, y_collocation, t_collocation)
+    val_loss, mse_initial, mse_boundary, mse_pde = loss_function(model, alpha,
+                    x_val, y_val, t_val, u_val,
+                    x_boundary, y_boundary, t_boundary, u_boundary,
+                    x_collocation, y_collocation, t_collocation)
 
-        return model, train_loss, val_loss, mse_initial, mse_boundary, mse_pde
+    return model, train_loss, val_loss, mse_initial, mse_boundary, mse_pde
 
 
 def visualize_result(device, model, loss):
@@ -278,11 +280,11 @@ def main():
                     start_time = time.time()
 
                     _, train_loss, val_loss, mse_initial, mse_boundary, mse_pde = train_model(device, alpha, hidden_size, n_hidden_layers, data_size)
-                    
+
                     end_time = time.time()
                     elapsed_time = end_time - start_time
 
-                    table.loc[len(table.index)] = [n_hidden_layers, hidden_size, epochs, data_size, train_loss.item(), val_loss.item(), mse_initial.item(), mse_boundary.item(), mse_pde.item(), elapsed_time] 
+                    table.loc[len(table.index)] = [n_hidden_layers, hidden_size, epochs, data_size, train_loss.item(), val_loss.item(), mse_initial.item(), mse_boundary.item(), mse_pde.item(), elapsed_time]
                     table.to_csv('table.csv', index=False)
 
 
