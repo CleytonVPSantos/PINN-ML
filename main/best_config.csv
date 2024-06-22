@@ -1,0 +1,2 @@
+,n_hidden_layers,hidden_size,epochs,data_size,train_loss,val_loss,val_loss_initial_data,val_loss_boundary_data,val_loss_collocation,elapsed_time,lossPtraining_time,val_loss_dataOval_loss_col
+3,3.0,100.0,50.0,80.0,0.00207,0.00177,0.00018,0.00041,0.00118,159.69676,0.2826632652,0.15254237288135594
